@@ -140,6 +140,7 @@ from omnigent.host.frames import (
     HostStopRunnerResultFrame,
     HostStoreSecretFrame,
     HostStoreSecretResultFrame,
+    HostWorkspaceCallFrame,
     ImportSessionChunkingUnsupportedError,
     decode_host_frame,
     encode_host_frame,
@@ -6168,6 +6169,12 @@ class HostProcess:
             )
         elif isinstance(frame, HostListWorktreesFrame):
             await self._send_text(ws, self._encode_frame(await self._handle_list_worktrees(frame)))
+        elif isinstance(frame, HostWorkspaceCallFrame):
+            from omnigent.host.workspace_service import serve_tunnel_call
+
+            # Each response message goes out as soon as the service yields it.
+            async for reply in serve_tunnel_call(self._workspace_reader, frame):
+                await self._send_text(ws, self._encode_frame(reply))
         elif isinstance(frame, HostFsRequestFrame):
             # Git status and directory walks can block, so run the read
             # off the event loop and reply when it completes.
